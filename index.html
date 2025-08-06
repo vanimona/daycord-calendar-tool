@@ -236,12 +236,12 @@
             <div class="input-section">
                 <div class="input-group">
                     <label for="eventName">📋 イベント名</label>
-                    <input type="text" id="eventName" placeholder="例: 絶エデン固定" value="絶エデン固定">
+                    <input type="text" id="eventName" placeholder="イベント名を入力">
                 </div>
                 
                 <div class="input-group">
                     <label for="scheduleInput">📝 デイコードの出力結果</label>
-                    <textarea id="scheduleInput" placeholder="デイコードから出力された確定日をここに貼り付け&#10;例:&#10;2025/08/15(金) 22:00〜24:00&#10;2025/08/16(土) 22:00〜24:00&#10;2025/08/18(月) 22:00〜24:00"></textarea>
+                    <textarea id="scheduleInput" placeholder="デイコードから出力された確定日をここに貼り付け&#10;例:&#10;2025/08/09(土)&#10;2025/08/10(日)&#10;2025/08/13(水)&#10;&#10;時間指定がある場合:&#10;2025/08/15(金) 22:00〜24:00"></textarea>
                 </div>
                 
                 <button class="generate-btn" onclick="generateLinks()">🔄 Googleカレンダーリンクを生成</button>
@@ -256,9 +256,14 @@
                     4. 生成されたリンクをDiscordに貼って共有！<br><br>
                     
                     <strong>対応フォーマット:</strong><br>
-                    • 2025/08/15(金) 22:00〜24:00<br>
-                    • 8/15 22:00-24:00<br>
-                    • 2025年8月15日 22時〜24時<br>
+                    • 2025/08/09(土) ← 終日予定<br>
+                    • 2025/08/15(金) 22:00〜24:00 ← 時間指定<br>
+                    • 2025/08/09(土) がんばるぞ！ ← コメント付きも対応<br><br>
+                    
+                    <strong>自動で無視されるもの:</strong><br>
+                    • イベント確定日一覧：<br>
+                    • [デイコードURL](...)<br>
+                    • 余分なコメントテキスト
                 </div>
             </div>
             
@@ -326,7 +331,7 @@
             lines.forEach(line => {
                 const parsed = parseDateTime(line);
                 if (parsed) {
-                    const calendarUrl = createGoogleCalendarUrl(eventName, parsed.startUTC, parsed.endUTC);
+                    const calendarUrl = createGoogleCalendarUrl(eventName, parsed.startUTC, parsed.endUTC, parsed.isAllDay);
                     
                     // 一括操作用にデータ保存
                     globalEvents.push({
@@ -334,7 +339,8 @@
                         start: parsed.startUTC,
                         end: parsed.endUTC,
                         url: calendarUrl,
-                        display: parsed.display
+                        display: parsed.display,
+                        isAllDay: parsed.isAllDay
                     });
                     
                     linksHtml += `
@@ -376,27 +382,60 @@
         }
         
         function parseDateTime(line) {
-            // 複数のパターンに対応
-            const patterns = [
+            // 不要な行をスキップ（より幅広く対応）
+            if (line.includes('イベント確定日一覧') || 
+                line.includes('デイコードURL') || 
+                line.includes('https://') ||
+                line.trim() === '' ||
+                line.includes('[') ||
+                !line.includes('/')) {
+                return null;
+            }
+            
+            // 日付部分だけを抽出（コメントを除去）
+            // より柔軟にコメント除去：) または )) の後のテキストを削除
+            const cleanLine = line.replace(/\s*[)）]+.*$/, '');
+            
+            // パターン1: 終日予定（時間指定なし）
+            const allDayPattern = /(\d{4})\/(\d{1,2})\/(\d{1,2})\([^)）]+\)/;
+            const allDayMatch = cleanLine.match(allDayPattern);
+            
+            if (allDayMatch) {
+                const [, year, month, day] = allDayMatch;
+                const dayOfWeek = line.match(/\(([^)）]+)\)/)[1];
+                
+                // 終日予定の場合はUTCで日付のみ指定
+                const dateStr = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
+                
+                return {
+                    display: `${year}/${month}/${day}(${dayOfWeek})`,
+                    startUTC: dateStr, // 終日予定は時間なし
+                    endUTC: dateStr,
+                    isAllDay: true
+                };
+            }
+            
+            // パターン2-4: 時間指定ありの既存パターン
+            const timePatterns = [
                 // 2025/08/15(金) 22:00〜24:00
-                /(\d{4})\/(\d{1,2})\/(\d{1,2})\([^)]+\)\s+(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})/,
+                /(\d{4})\/(\d{1,2})\/(\d{1,2})\([^)）]+\)\s+(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})/,
                 // 8/15 22:00-24:00
                 /(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/,
                 // 2025年8月15日 22時〜24時
                 /(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2})時〜(\d{1,2})時/
             ];
             
-            for (let pattern of patterns) {
-                const match = line.match(pattern);
+            for (let i = 0; i < timePatterns.length; i++) {
+                const match = cleanLine.match(timePatterns[i]);
                 if (match) {
                     let year, month, day, startHour, startMin, endHour, endMin;
                     
-                    if (pattern === patterns[0]) {
+                    if (i === 0) {
                         [, year, month, day, startHour, startMin, endHour, endMin] = match;
-                    } else if (pattern === patterns[1]) {
+                    } else if (i === 1) {
                         [, month, day, startHour, startMin, endHour, endMin] = match;
                         year = new Date().getFullYear();
-                    } else if (pattern === patterns[2]) {
+                    } else if (i === 2) {
                         [, year, month, day, startHour, , endHour] = match;
                         startMin = '00';
                         endMin = '00';
@@ -416,7 +455,8 @@
                     return {
                         display: line.trim(),
                         startUTC: jstStart.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z',
-                        endUTC: jstEnd.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+                        endUTC: jstEnd.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z',
+                        isAllDay: false
                     };
                 }
             }
@@ -424,9 +464,16 @@
             return null;
         }
         
-        function createGoogleCalendarUrl(title, startUTC, endUTC) {
+        function createGoogleCalendarUrl(title, startUTC, endUTC, isAllDay = false) {
             const encodedTitle = encodeURIComponent(title);
-            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&dates=${startUTC}/${endUTC}`;
+            
+            if (isAllDay) {
+                // 終日予定の場合は日付のみ（YYYYMMDD形式）
+                return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&dates=${startUTC}/${endUTC}`;
+            } else {
+                // 時間指定ありの場合は従来通り
+                return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&dates=${startUTC}/${endUTC}`;
+            }
         }
         
         function openAllTabs() {
@@ -443,8 +490,17 @@
                 // ICS形式でのイベント追加
                 icsContent += 'BEGIN:VEVENT\n';
                 icsContent += `UID:daycord-${Date.now()}-${index}@example.com\n`;
-                icsContent += `DTSTART:${event.start}\n`;
-                icsContent += `DTEND:${event.end}\n`;
+                
+                if (event.isAllDay) {
+                    // 終日予定の場合
+                    icsContent += `DTSTART;VALUE=DATE:${event.start}\n`;
+                    icsContent += `DTEND;VALUE=DATE:${event.end}\n`;
+                } else {
+                    // 時間指定の場合
+                    icsContent += `DTSTART:${event.start}\n`;
+                    icsContent += `DTEND:${event.end}\n`;
+                }
+                
                 icsContent += `SUMMARY:${eventName}\n`;
                 icsContent += `DESCRIPTION:デイコードで調整された予定\n`;
                 icsContent += 'END:VEVENT\n';
@@ -478,13 +534,9 @@
             }, 2000);
         }
         
-        // デモ用の初期データを設定
+        // 初期状態は空にする
         document.addEventListener('DOMContentLoaded', function() {
-            const demoData = `2025/08/15(金) 22:00〜24:00
-2025/08/16(土) 22:00〜24:00
-2025/08/18(月) 22:00〜24:00`;
-            
-            document.getElementById('scheduleInput').value = demoData;
+            document.getElementById('scheduleInput').value = '';
         });
     </script>
 </body>
