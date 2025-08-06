@@ -341,8 +341,6 @@
         let globalEvents = [];
         
         function parseDateTime(line) {
-            console.log('Processing line:', JSON.stringify(line));
-            
             // 不要な行をスキップ
             if (line.includes('イベント確定日一覧') || 
                 line.includes('デイコードURL') || 
@@ -351,7 +349,6 @@
                 line.includes('[') ||
                 line.includes(']') ||
                 !line.includes('/')) {
-                console.log('Skipped line:', line);
                 return null;
             }
             
@@ -360,7 +357,6 @@
             const match = line.match(allDayPattern);
             
             if (match) {
-                console.log('All day match found:', match);
                 const [, year, month, day] = match;
                 const dayOfWeek = line.match(/\(([^)]+)\)/)[1];
                 
@@ -401,7 +397,6 @@
                 };
             }
             
-            console.log('No match found for line:', line);
             return null;
         }
         
@@ -414,17 +409,12 @@
             const eventName = document.getElementById('eventName').value.trim();
             const scheduleInput = document.getElementById('scheduleInput').value.trim();
             
-            console.log('Event name:', eventName);
-            console.log('Schedule input:', scheduleInput);
-            
             if (!eventName || !scheduleInput) {
                 alert('イベント名と日程を入力してください！');
                 return;
             }
             
             const lines = scheduleInput.split('\n').filter(line => line.trim());
-            console.log('Split lines:', lines);
-            
             const output = document.getElementById('output');
             const bulkActions = document.getElementById('bulkActions');
             
@@ -432,12 +422,8 @@
             let markdownText = `### ${eventName} - Googleカレンダー追加リンク\n\n`;
             globalEvents = [];
             
-            console.log('Processing', lines.length, 'lines');
-            
-            lines.forEach((line, index) => {
-                console.log(`Line ${index}:`, JSON.stringify(line));
+            lines.forEach((line) => {
                 const parsed = parseDateTime(line);
-                console.log(`Parsed result for line ${index}:`, parsed);
                 
                 if (parsed) {
                     const calendarUrl = createGoogleCalendarUrl(eventName, parsed.startUTC, parsed.endUTC, parsed.isAllDay);
@@ -461,8 +447,6 @@
                     markdownText += `- ${parsed.display}  \n　[📅 Googleカレンダーに追加](${calendarUrl})\n\n`;
                 }
             });
-            
-            console.log('Found', globalEvents.length, 'valid events');
             
             if (linksHtml) {
                 output.innerHTML = `
