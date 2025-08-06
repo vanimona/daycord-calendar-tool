@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デイコード→Googleカレンダー リンク生成ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #5865F2, #7289DA);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px solid #e3e5ff;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c2f36;
+            font-size: 14px;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #5865F2;
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #5865F2, #7289DA);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(88, 101, 242, 0.3);
+        }
+        
+        .output-section {
+            background: #fff;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            min-height: 200px;
+        }
+        
+        .output-section h3 {
+            color: #2c2f36;
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .calendar-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8f9ff;
+            border: 1px solid #e3e5ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        
+        .calendar-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .date-info {
+            font-weight: 600;
+            color: #2c2f36;
+        }
+        
+        .add-btn {
+            background: #00a86b;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .add-btn:hover {
+            background: #008f5a;
+        }
+        
+        .copy-section {
+            background: #f0f2ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+        
+        .copy-btn {
+            background: #6c7bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #5a6aff;
+        }
+        
+        .example-section {
+            background: #fff9e6;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .example-section h4 {
+            color: #cc8400;
+            margin-bottom: 10px;
+        }
+        
+        .example-text {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #555;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #8b949e;
+            padding: 40px 20px;
+        }
+        
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 デイコード→Googleカレンダー変換</h1>
+            <p>Discord日程調整の結果を、ワンクリックでGoogleカレンダーに追加できるリンクに変換</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="eventName">📋 イベント名</label>
+                    <input type="text" id="eventName" placeholder="例: 絶エデン固定" value="絶エデン固定">
+                </div>
+                
+                <div class="input-group">
+                    <label for="scheduleInput">📝 デイコードの出力結果</label>
+                    <textarea id="scheduleInput" placeholder="デイコードから出力された確定日をここに貼り付け&#10;例:&#10;2025/08/15(金) 22:00〜24:00&#10;2025/08/16(土) 22:00〜24:00&#10;2025/08/18(月) 22:00〜24:00"></textarea>
+                </div>
+                
+                <button class="generate-btn" onclick="generateLinks()">🔄 Googleカレンダーリンクを生成</button>
+            </div>
+            
+            <div class="example-section">
+                <h4>💡 使い方のコツ</h4>
+                <div class="example-text">
+                    1. デイコードで確定した日程をコピー<br>
+                    2. 上の「デイコードの出力結果」欄に貼り付け<br>
+                    3. 「生成」ボタンをクリック<br>
+                    4. 生成されたリンクをDiscordに貼って共有！<br><br>
+                    
+                    <strong>対応フォーマット:</strong><br>
+                    • 2025/08/15(金) 22:00〜24:00<br>
+                    • 8/15 22:00-24:00<br>
+                    • 2025年8月15日 22時〜24時<br>
+                </div>
+            </div>
+            
+            <div class="output-section">
+                <h3>🎯 生成されたカレンダーリンク</h3>
+                <div id="output">
+                    <div class="empty-state">
+                        <div class="icon">📅</div>
+                        <p>上記の情報を入力して「生成」ボタンを押すと、<br>Googleカレンダー追加リンクがここに表示されます</p>
+                    </div>
+                </div>
+                
+                <div id="bulkActions" style="display: none;">
+                    <div style="background: #e8f4fd; border: 2px solid #1da1f2; border-radius: 8px; padding: 20px; margin-top: 20px;">
+                        <h4 style="color: #1da1f2; margin-bottom: 15px;">⚡ 一括追加オプション</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button onclick="openAllTabs()" style="background: #1da1f2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                🚀 全て新しいタブで開く
+                            </button>
+                            <button onclick="downloadICS()" style="background: #00a86b; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                📥 ICSファイルダウンロード
+                            </button>
+                        </div>
+                        <p style="font-size: 13px; color: #666; margin-top: 10px;">
+                            🚀 = 複数タブが開くので各タブで「保存」をクリック<br>
+                            📥 = ファイルをダウンロード後、ダブルクリックで一括インポート
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalEvents = []; // 一括操作用のデータ保存
+        
+        function generateLinks() {
+            const eventName = document.getElementById('eventName').value.trim();
+            const scheduleInput = document.getElementById('scheduleInput').value.trim();
+            
+            if (!eventName || !scheduleInput) {
+                alert('イベント名と日程を入力してください！');
+                return;
+            }
+            
+            const lines = scheduleInput.split('\n').filter(line => line.trim());
+            const output = document.getElementById('output');
+            const bulkActions = document.getElementById('bulkActions');
+            
+            if (lines.length === 0) {
+                output.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">❌</div>
+                        <p>有効な日程が見つかりませんでした</p>
+                    </div>
+                `;
+                bulkActions.style.display = 'none';
+                return;
+            }
+            
+            let linksHtml = '';
+            let markdownText = `### ${eventName} - Googleカレンダー追加リンク\n\n`;
+            globalEvents = []; // リセット
+            
+            lines.forEach(line => {
+                const parsed = parseDateTime(line);
+                if (parsed) {
+                    const calendarUrl = createGoogleCalendarUrl(eventName, parsed.startUTC, parsed.endUTC);
+                    
+                    // 一括操作用にデータ保存
+                    globalEvents.push({
+                        title: eventName,
+                        start: parsed.startUTC,
+                        end: parsed.endUTC,
+                        url: calendarUrl,
+                        display: parsed.display
+                    });
+                    
+                    linksHtml += `
+                        <div class="calendar-link">
+                            <div class="date-info">${parsed.display}</div>
+                            <a href="${calendarUrl}" target="_blank" class="add-btn">📅 追加</a>
+                        </div>
+                    `;
+                    
+                    markdownText += `- ${parsed.display}  \n　[📅 Googleカレンダーに追加](${calendarUrl})\n\n`;
+                }
+            });
+            
+            if (linksHtml) {
+                output.innerHTML = `
+                    ${linksHtml}
+                    <div class="copy-section">
+                        <h4>📋 Markdown形式でコピー（Discord/Slack用）</h4>
+                        <textarea id="markdownOutput" readonly style="width: 100%; height: 120px; margin-top: 8px;">${markdownText}</textarea>
+                        <button class="copy-btn" onclick="copyMarkdown()">📋 コピー</button>
+                    </div>
+                `;
+                
+                // 複数日程がある場合のみ一括オプションを表示
+                if (globalEvents.length > 1) {
+                    bulkActions.style.display = 'block';
+                } else {
+                    bulkActions.style.display = 'none';
+                }
+            } else {
+                output.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">❌</div>
+                        <p>日程の形式を認識できませんでした<br>例: 2025/08/15(金) 22:00〜24:00</p>
+                    </div>
+                `;
+                bulkActions.style.display = 'none';
+            }
+        }
+        
+        function parseDateTime(line) {
+            // 複数のパターンに対応
+            const patterns = [
+                // 2025/08/15(金) 22:00〜24:00
+                /(\d{4})\/(\d{1,2})\/(\d{1,2})\([^)]+\)\s+(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})/,
+                // 8/15 22:00-24:00
+                /(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/,
+                // 2025年8月15日 22時〜24時
+                /(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2})時〜(\d{1,2})時/
+            ];
+            
+            for (let pattern of patterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    let year, month, day, startHour, startMin, endHour, endMin;
+                    
+                    if (pattern === patterns[0]) {
+                        [, year, month, day, startHour, startMin, endHour, endMin] = match;
+                    } else if (pattern === patterns[1]) {
+                        [, month, day, startHour, startMin, endHour, endMin] = match;
+                        year = new Date().getFullYear();
+                    } else if (pattern === patterns[2]) {
+                        [, year, month, day, startHour, , endHour] = match;
+                        startMin = '00';
+                        endMin = '00';
+                    }
+                    
+                    // 24:00を翌日の00:00に変換
+                    if (parseInt(endHour) >= 24) {
+                        endHour = String(parseInt(endHour) - 24).padStart(2, '0');
+                        // 翌日の処理は簡略化（月末処理は省略）
+                        day = String(parseInt(day) + 1).padStart(2, '0');
+                    }
+                    
+                    // JST → UTC変換 (JST = UTC + 9時間なので、UTC = JST - 9時間)
+                    const jstStart = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${startHour.padStart(2, '0')}:${startMin || '00'}:00+09:00`);
+                    const jstEnd = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${endHour.padStart(2, '0')}:${endMin || '00'}:00+09:00`);
+                    
+                    return {
+                        display: line.trim(),
+                        startUTC: jstStart.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z',
+                        endUTC: jstEnd.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        function createGoogleCalendarUrl(title, startUTC, endUTC) {
+            const encodedTitle = encodeURIComponent(title);
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&dates=${startUTC}/${endUTC}`;
+        }
+        
+        function openAllTabs() {
+            globalEvents.forEach(event => {
+                window.open(event.url, '_blank');
+            });
+        }
+        
+        function downloadICS() {
+            const eventName = document.getElementById('eventName').value.trim();
+            let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Daycord Calendar Tool//EN\nCALSCALE:GREGORIAN\n';
+            
+            globalEvents.forEach((event, index) => {
+                // ICS形式でのイベント追加
+                icsContent += 'BEGIN:VEVENT\n';
+                icsContent += `UID:daycord-${Date.now()}-${index}@example.com\n`;
+                icsContent += `DTSTART:${event.start}\n`;
+                icsContent += `DTEND:${event.end}\n`;
+                icsContent += `SUMMARY:${eventName}\n`;
+                icsContent += `DESCRIPTION:デイコードで調整された予定\n`;
+                icsContent += 'END:VEVENT\n';
+            });
+            
+            icsContent += 'END:VCALENDAR';
+            
+            // ファイルダウンロード
+            const blob = new Blob([icsContent], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${eventName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function copyMarkdown() {
+            const textarea = document.getElementById('markdownOutput');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ コピー完了！';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+        
+        // デモ用の初期データを設定
+        document.addEventListener('DOMContentLoaded', function() {
+            const demoData = `2025/08/15(金) 22:00〜24:00
+2025/08/16(土) 22:00〜24:00
+2025/08/18(月) 22:00〜24:00`;
+            
+            document.getElementById('scheduleInput').value = demoData;
+        });
+    </script>
+</body>
+</html>
